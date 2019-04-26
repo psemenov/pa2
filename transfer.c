@@ -1,20 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "banking.h"
+#include "main.h"
+
 
 void
 transfer(void * parent_data, local_id src, local_id dst,
               balance_t amount)
 {
-    Message msg;
-
-    msg.s_header = (MessageHeader) {
-        .s_magic       = MESSAGE_MAGIC,
-        .s_payload_len = sizeof(TransferOrder),
-        .s_type        = TRANSFER,
-        .s_local_time  = get_physical_time()
-    };
+    Message msg= init_msg(TRANSFER,sizeof(TransferOrder));
 
     TransferOrder order = (TransferOrder) {
         .s_src = src,

@@ -16,7 +16,7 @@ send(void *self, local_id dst, const Message *msg) {
         return -1;
 
     int    fd   = p->io->fds[src][dst][WRITE_FD];
-    /* int ret = */ write(fd, msg, sizeof(MessageHeader) + msg->s_header.s_payload_len);
+    write(fd, msg, sizeof(MessageHeader) + msg->s_header.s_payload_len);
 //    fprintf(stderr, "ID %hhd send %d bytes to %d.\n", src, ret, dst);
     return 0;
 }
