@@ -5,8 +5,6 @@
 
 #include "io.h"
 #include "main.h"
-#include "ipc.h"
-#include "child.h"
 
 
 int send(void *self, local_id dst, const Message *msg) {
@@ -16,7 +14,6 @@ int send(void *self, local_id dst, const Message *msg) {
         perror("write");
         return -1;
     }
-
     return 0;
 }
 
@@ -43,6 +40,5 @@ int receive(void *self, local_id from, Message *msg) {
 int receive_any(void *self, Message *msg) {
     for (local_id i = 0; i <= proc_number; i++) 
         if (receive(self, i, msg) == 0) return 0;
-    
     return -1;   
 }

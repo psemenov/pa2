@@ -13,8 +13,7 @@
  * @param io    Metadata to perfom I/O.
  * @param pnum  Current process number including parent.
  */
-int
-create_pipes(IO *io, local_id pnum) {
+int init_pipes(IO *io, local_id pnum) {
     int count = 1;
     for (int i = 0; i <= pnum; i++) {
         for (int j = 0; j <= pnum; j++) {
@@ -39,8 +38,7 @@ create_pipes(IO *io, local_id pnum) {
  * @param io    Metadata to perfom I/O; includes pipes.
  * @param id    ID of the child process.
  */ 
-void
-close_unsed_fds(const IO *io, local_id id, local_id pnum) {
+void close_fds(const IO *io, local_id id, local_id pnum) {
     for (local_id i = 0; i <= pnum; i++) {
         for (local_id j = 0; j <= pnum; j++) {
             if (i != j) {

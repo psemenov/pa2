@@ -16,6 +16,11 @@ typedef struct {
  * @param p         Child process desciption.
  * @param history   Balance history of the process.
  */ 
-int child(proc_t *p, balance_t balance);
+int process_c(proc_t *p, balance_t balance);
+void synchronize(proc_t *proc, MessageType m_type, char *payload, size_t payload_len);
+void balance_copy(BalanceHistory *balance_history, uint8_t time);
+void balance_set(BalanceHistory *balance_history, balance_t balance);
+void transfer_cycle(proc_t *proc, BalanceHistory *balance_history, TransferOrder *transfer_order);
+void working_cycle(proc_t *proc, BalanceHistory *balance_history);
 
 #endif /* __IFMO_DISTRIBUTED_CLASS_PA1_CHILD_H__ */
