@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     };
 
     if(get_arguments(argc, argv) != 0) {
-        perror("Wrong arguments get_arguments()");
+        perror("Wrong arguments:get_arguments() main.c");
         return -1;
     }
     io.events_log_stream = fopen(events_log, "w+");

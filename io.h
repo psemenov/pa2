@@ -14,8 +14,8 @@ typedef struct {
    
     FILE *events_log_stream;
     FILE *pipes_log_stream;
-
     int fds[MAX_PROC+1][MAX_PROC+1][NUM_FD];
+   
 } IO;
 
 int init_pipes(IO *io, local_id procnum);
