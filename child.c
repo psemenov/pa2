@@ -12,14 +12,7 @@
  */
 static void
 sync_state(proc_t *p, MessageType type, char *payload, size_t payload_len) {
-    Message msg;
-    msg.s_header = (MessageHeader) {
-        .s_magic = MESSAGE_MAGIC,
-        .s_payload_len = payload_len,
-        .s_type = type,
-        .s_local_time = 0
-    };
-   // Message msg = init_msg(type , payload_len);
+    Message msg = init_msg(type , payload_len);
     memcpy(msg.s_payload, payload, payload_len);
     send_multicast((void*)p, (const Message *)&msg);
 
@@ -168,10 +161,9 @@ child(proc_t *p, balance_t balance) {
     fprintf(io->events_log_stream, log_received_all_done_fmt, 
             get_physical_time(), p->self_id);
 
-#ifdef DEBUG
     for (int i = 0; i < history.s_history_len; i++) 
         fprintf(stderr, "ID %d end with balance[%d] %d\n", p->self_id, i, history.s_history[i].s_balance);
-#endif
+
     copy_range(&history, get_physical_time());
 
     sync_state(p, BALANCE_HISTORY, (char*)&history, sizeof(history));
