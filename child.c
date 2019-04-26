@@ -29,9 +29,8 @@ sync_state(proc_t *p, MessageType type, char *payload, size_t payload_len) {
 /* Copy balance if there was no transfer on the <time>. */
 static void
 copy_range(BalanceHistory *history, uint8_t time) {
-    uint8_t min = history->s_history_len;
-    BalanceState template = history->s_history[min-1];
-    for (uint8_t i = min; i <= time; i++) {
+    BalanceState template = history->s_history[history->s_history_len-1];
+    for (uint8_t i = history->s_history_len; i <= time; i++) {
         history->s_history[i] = template;
         history->s_history[i].s_time = i;
     }
@@ -40,17 +39,13 @@ copy_range(BalanceHistory *history, uint8_t time) {
 
 static void
 set_balance(BalanceHistory *history, balance_t balance) {
-    timestamp_t t = get_physical_time();
-    uint8_t hlen  = history->s_history_len;
-    balance_t bal = history->s_history[hlen-1].s_balance;
-    copy_range(history, (uint8_t)t);
-    history->s_history[t] = (BalanceState) {
-            .s_balance = bal + balance,
-            .s_time = t,
+    copy_range(history, (uint8_t)get_physical_time());
+    history->s_history[get_physical_time()] = (BalanceState) {
+            .s_balance = history->s_history[history->s_history_len-1].s_balance + balance,
+            .s_time = get_physical_time(),
             .s_balance_pending_in = 0
     };
-
-    history->s_history_len = t+1;
+    history->s_history_len = get_physical_time()+1;
 }
 
 /** Transfer cycle.
@@ -134,16 +129,15 @@ child(proc_t *p, balance_t balance) {
         .s_history_len = 0,
         .s_history = {{ 0 }}
     };
-    timestamp_t t = get_physical_time();
 
-    for (timestamp_t i = 0; i <= t; i++) {
+    for (timestamp_t i = 0; i <= get_physical_time(); i++) {
         history.s_history[i] = (BalanceState) {
             .s_balance = balance,
             .s_time = i,
             .s_balance_pending_in = 0
         };
     }
-    history.s_history_len = t+1;
+    history.s_history_len = get_physical_time()+1;
 
     close_unsed_fds(p->io, p->self_id, p->procnum);
     /* Process starts. */
@@ -163,9 +157,7 @@ child(proc_t *p, balance_t balance) {
     work(p, &history);
 
     /* Process's done. */
-    uint8_t hl  = history.s_history_len;
-    balance_t b = history.s_history[hl-1].s_balance;
-    len = sprintf(payload, log_done_fmt, get_physical_time(), p->self_id, b);
+    len = sprintf(payload, log_done_fmt, get_physical_time(), p->self_id, history.s_history[history.s_history_len-1].s_balance);
     fputs(payload, io->events_log_stream); 
 
     /* Process syncs wih ohers. */
@@ -178,8 +170,7 @@ child(proc_t *p, balance_t balance) {
         fprintf(stderr, "ID %d end with balance[%d] %d\n", p->self_id, i, history.s_history[i].s_balance);
 #endif
 
-    t = get_physical_time();
-    copy_range(&history, t);
+    copy_range(&history, get_physical_time());
 
     sync_state(p, BALANCE_HISTORY, (char*)&history, sizeof(history));
     return 0;

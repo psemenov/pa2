@@ -45,7 +45,6 @@ Message init_msg(MessageType type , size_t payload_len){
     return msg;
 }
 
-
 static void
 wait_balance_from_all(proc_t *p, AllHistory *all_history) {
     Message msg = {{ 0 }};
@@ -55,14 +54,9 @@ wait_balance_from_all(proc_t *p, AllHistory *all_history) {
         while(receive((void*)p, i, &msg) != 0);
 
         if (msg.s_header.s_type == BALANCE_HISTORY) {
-            memcpy(&all_history->s_history[i-1], &msg.s_payload, 
-                                             msg.s_header.s_payload_len);
-
-            uint8_t hlen = all_history->s_history[i-1].s_history_len;
-
-            balance_t b  = all_history->s_history[i-1].s_history[hlen].s_balance;
-            fprintf(p->io->events_log_stream, log_done_fmt, get_physical_time(),
-                    p->self_id, b);
+            memcpy(&all_history->s_history[i-1], &msg.s_payload, msg.s_header.s_payload_len);
+            balance_t b  = all_history->s_history[i-1].s_history[all_history->s_history[i-1].s_history_len].s_balance;
+            fprintf(p->io->events_log_stream, log_done_fmt, get_physical_time(),p->self_id, b);
             i++;
         }
     }
@@ -71,7 +65,6 @@ wait_balance_from_all(proc_t *p, AllHistory *all_history) {
 
 int
 main(int argc, char *argv[]) {
-
 
     IO io = { 0 };
     proc_t proc = (proc_t){ 
