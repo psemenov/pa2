@@ -161,9 +161,6 @@ child(proc_t *p, balance_t balance) {
     fprintf(io->events_log_stream, log_received_all_done_fmt, 
             get_physical_time(), p->self_id);
 
-    for (int i = 0; i < history.s_history_len; i++) 
-        fprintf(stderr, "ID %d end with balance[%d] %d\n", p->self_id, i, history.s_history[i].s_balance);
-
     copy_range(&history, get_physical_time());
 
     sync_state(p, BALANCE_HISTORY, (char*)&history, sizeof(history));

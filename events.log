@@ -1,10 +1,10 @@
-0: process 1 (pid 25051, parent 25050) has STARTED with balance $10
+0: process 1 (pid 25148, parent 25147) has STARTED with balance $10
 0: process 1 received all STARTED messages
 1: process 1 transferred $ 1 to process 2
 2: process 1 received $ 1 from process 1
 2: process 1 has DONE with balance $10
 2: process 1 received all DONE messages
-0: process 2 (pid 25052, parent 25050) has STARTED with balance $20
+0: process 2 (pid 25149, parent 25147) has STARTED with balance $20
 0: process 2 received all STARTED messages
 1: process 2 received $ 1 from process 2
 2: process 2 transferred $ 1 to process 1
