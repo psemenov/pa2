@@ -9,7 +9,6 @@
 typedef struct {
     const IO *io;       /**< Contrainter with I/O metadata. */
     local_id self_id;   /**< ID for the process. */
-    local_id procnum;
 } proc_t;
 
 /** Child main function.
