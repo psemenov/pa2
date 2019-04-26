@@ -37,7 +37,7 @@ void receive_all_msg(proc_t *proc, MessageType m_type) {
         while(receive((void*)proc, i, &tmp_msg) != 0);
         if (tmp_msg.s_header.s_type != m_type) {
             fprintf(proc->io->pipes_log_stream, 
-                    "Bad received message: waited for %d, but got %d.\n",
+                    "Wrong message received: expected %d,instead got %d.\n",
                     m_type, tmp_msg.s_header.s_type);
         }
     }
@@ -49,13 +49,12 @@ void receive_all_balance(proc_t *proc, AllHistory *all_history) {
     local_id i = 1;
     while (i <= proc_number) {
         while(receive((void*)proc, i, &tmp_msg) != 0);
-
-        if (tmp_msg.s_header.s_type == BALANCE_HISTORY) {
-            memcpy(&all_history->s_history[i-1], &tmp_msg.s_payload, tmp_msg.s_header.s_payload_len);
-            balance_t b  = all_history->s_history[i-1].s_history[all_history->s_history[i-1].s_history_len].s_balance;
-            fprintf(proc->io->events_log_stream, log_done_fmt, get_physical_time(),proc->self_id, b);
-            i++;
-        }
+            if (tmp_msg.s_header.s_type == BALANCE_HISTORY) {
+                memcpy(&all_history->s_history[i-1], &tmp_msg.s_payload, tmp_msg.s_header.s_payload_len);
+                balance_t b  = all_history->s_history[i-1].s_history[all_history->s_history[i-1].s_history_len].s_balance;
+                fprintf(proc->io->events_log_stream, log_done_fmt, get_physical_time(),proc->self_id, b);
+                i++;
+            }
     }
     all_history->s_history_len = proc_number;
 }
@@ -68,7 +67,7 @@ int main(int argc, char *argv[]) {
     };
 
     if(get_arguments(argc, argv) != 0) {
-        perror("can't read arguments");
+        perror("Wrong arguments get_arguments()");
         return -1;
     }
     io.events_log_stream = fopen(events_log, "w+");

@@ -11,9 +11,9 @@ ID 1 closes read(1 -- 2)
 ID 1 closes pipe(2 -- 0)
 ID 1 closes write(2 -- 1)
 ID 1 closes all fds.
-ID 1 got TRANSFER message
-ID 1 got TRANSFER message
-ID 1 got STOP message.
+PID 1 received TRANSFER message.
+PID 1 received TRANSFER message.
+PID 1 received STOP message.
 Created pipe number 1.
 Created pipe number 2.
 Created pipe number 3.
@@ -27,19 +27,6 @@ ID 2 closes write(1 -- 2)
 ID 2 closes read(2 -- 0)
 ID 2 closes read(2 -- 1)
 ID 2 closes all fds.
-ID 2 got TRANSFER message
-ID 2 got TRANSFER message
-ID 2 got STOP message.
-Created pipe number 1.
-Created pipe number 2.
-Created pipe number 3.
-Created pipe number 4.
-Created pipe number 5.
-Created pipe number 6.
-ID 0 closes read(0 -- 1)
-ID 0 closes read(0 -- 2)
-ID 0 closes write(1 -- 0)
-ID 0 closes pipe(1 -- 2)
-ID 0 closes write(2 -- 0)
-ID 0 closes pipe(2 -- 1)
-ID 0 closes all fds.
+PID 2 received TRANSFER message.
+PID 2 received TRANSFER message.
+PID 2 received STOP message.

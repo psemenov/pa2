@@ -18,7 +18,7 @@ typedef struct {
     int fds[MAX_PROC+1][MAX_PROC+1][NUM_FD];
 } IO;
 
-int init_pipes(IO *io, local_id pnum);
-void close_fds(const IO* io, local_id id, local_id pnum);
+int init_pipes(IO *io, local_id procnum);
+void close_fds(const IO* io, local_id id, local_id procnum);
 
 #endif /* __IFMO_DISTRIBUTED_CLASS_IO__H */

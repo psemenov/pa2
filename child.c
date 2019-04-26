@@ -60,7 +60,7 @@ void transfer_cycle(proc_t *proc, BalanceHistory *balance_history, TransferOrder
         message = init_msg(ACK,0);
         send((void *)proc, PARENT_ID, &message);
     } else {
-        fprintf(proc->io->events_log_stream, "ID %d got mesasge for %d and %d.\n",
+        fprintf(proc->io->events_log_stream, "PID %d received messsage for %d and %d.\n",
                 proc->self_id, transfer_order->s_src, transfer_order->s_dst);
     }
     
@@ -69,30 +69,28 @@ void transfer_cycle(proc_t *proc, BalanceHistory *balance_history, TransferOrder
 void working_cycle(proc_t *proc, BalanceHistory *balance_history) {
     while (true) {
         Message tmp_msg = {{ 0 }};
-        if (receive_any(proc, &tmp_msg) < 0)
+        if (receive_any(proc, &tmp_msg) < 0) continue;
+        if(tmp_msg.s_header.s_type == TRANSFER){
+            fprintf(proc->io->pipes_log_stream,"PID %d received TRANSFER message.\n",proc->self_id);
+            transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
+        }else if(tmp_msg.s_header.s_type == STOP){
+            fprintf(proc->io->pipes_log_stream,"PID %d received STOP message.\n",proc->self_id);
+            return;
+        } else {
+            fprintf(proc->io->pipes_log_stream,"PID %d received wrong message with m_type %d.\n",
+                proc->self_id, tmp_msg.s_header.s_type);
             continue;
-
-        switch (tmp_msg.s_header.s_type) {
-            case TRANSFER: {
-                fprintf(proc->io->pipes_log_stream,
-                        "ID %d got TRANSFER message\n",
-                        proc->self_id);
-                transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
-                break;
-            }
-            case STOP:
-                fprintf(proc->io->pipes_log_stream,
-                        "ID %d got STOP message.\n",
-                        proc->self_id);
-                return;
-            default: {
-                fprintf(proc->io->pipes_log_stream,
-                        "ID %d got wrong message with type %d.\n",
-                        proc->self_id, tmp_msg.s_header.s_type);
-                continue;
-            }
         }
     }
+}
+
+BalanceHistory init_balance_history(proc_t *proc){
+    BalanceHistory balance_history = {
+        .s_id = proc->self_id,
+        .s_history_len = 0,
+        .s_history = {{ 0 }}
+    };
+    return balance_history;
 }
 
 /** Child main function. */ 
@@ -101,11 +99,7 @@ int process_c(proc_t *proc, balance_t balance) {
     char payload[MAX_PAYLOAD_LEN];
     size_t len;
     const IO *io = proc->io;
-    BalanceHistory balance_history = {
-        .s_id = proc->self_id,
-        .s_history_len = 0,
-        .s_history = {{ 0 }}
-    };
+    BalanceHistory balance_history = init_balance_history(proc);
 
     for (timestamp_t i = 0; i <= get_physical_time(); i++) {
         balance_history.s_history[i] = (BalanceState) {

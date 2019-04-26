@@ -11,7 +11,7 @@ int send(void *self, local_id dst, const Message *msg) {
     proc_t* p = (proc_t*)self;
     local_id src = p->self_id;
     if (write(p->io->fds[src][dst][WRITE_FD], msg, sizeof(MessageHeader) + msg->s_header.s_payload_len) < 0) {
-        perror("write");
+        perror("Send ipc.c");
         return -1;
     }
     return 0;
@@ -30,7 +30,7 @@ int receive(void *self, local_id from, Message *msg) {
     if(from == dst) return -1;
     ssize_t read_result = read(p->io->fds[from][dst][READ_FD], msg, sizeof(Message));
     if (read_result < 0 && errno != EAGAIN) {
-        perror("read");
+        perror("Receive ipc.c");
         return -1;
     }
     if(read_result < 0) return -1;
