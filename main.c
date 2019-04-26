@@ -63,8 +63,7 @@ wait_balance_from_all(proc_t *p, AllHistory *all_history) {
     all_history->s_history_len = proc_number;
 }
 
-int
-main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     IO io = { 0 };
     proc_t proc = (proc_t){ 
@@ -75,7 +74,6 @@ main(int argc, char *argv[]) {
         perror("can't read arguments");
         return -1;
     }
-    //proc.procnum = proc_number;
     io.events_log_stream = fopen(events_log, "w+");
     io.pipes_log_stream  = fopen(pipes_log, "w");
 
@@ -108,7 +106,7 @@ main(int argc, char *argv[]) {
     send_multicast(&proc,&msg);
 
     wait_msg_from_all(&proc, DONE);
-    fprintf(io.events_log_stream, log_received_all_done_fmt,
+    fprintf(io.events_log_stream,log_received_all_done_fmt,
             get_physical_time(), PARENT_ID);
     wait_balance_from_all(&proc, &all_history);
     print_history(&all_history);

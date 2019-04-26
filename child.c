@@ -8,10 +8,6 @@
 #include "main.h"
 
 
-#define BALANCE_HIST_SIZE(hist) \
- (sizeof(BalanceHistory) - (sizeof(hist->s_history) - hist->s_history_len))
-
-
 /** Syncronization cycle.
  */
 static void
@@ -176,7 +172,6 @@ child(proc_t *p, balance_t balance) {
     for (int i = 0; i < history.s_history_len; i++) 
         fprintf(stderr, "ID %d end with balance[%d] %d\n", p->self_id, i, history.s_history[i].s_balance);
 #endif
-
     copy_range(&history, get_physical_time());
 
     sync_state(p, BALANCE_HISTORY, (char*)&history, sizeof(history));
