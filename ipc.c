@@ -3,14 +3,13 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#include "io.h"
-#include "main.h"
+#include "proc.h"
 
 
 int send(void *self, local_id dst, const Message *msg) {
-    proc_t* p = (proc_t*)self;
-    local_id src = p->self_id;
-    if (write(p->io->fds[src][dst][WRITE_FD], msg, sizeof(MessageHeader) + msg->s_header.s_payload_len) < 0) {
+    process* p = (process*)self;
+    local_id src = p->id;
+    if (write(pipes[src][dst][WRITE_FD], msg, sizeof(MessageHeader) + msg->s_header.s_payload_len) < 0) {
         perror("Send ipc.c");
         return -1;
     }
@@ -18,17 +17,17 @@ int send(void *self, local_id dst, const Message *msg) {
 }
 
 int send_multicast(void *self, const Message *msg) {
-    proc_t* p = (proc_t*)self;
+    process* p = (process*)self;
     for (local_id i = 0; i <= proc_number; i++) 
-        if (i != p->self_id) send(self, i, msg);
+        if (i != p->id) send(self, i, msg);
     return 0;
 }
 
 int receive(void *self, local_id from, Message *msg) {
-    proc_t* p = (proc_t*)self;
-    local_id dst = p->self_id;
+    process* p = (process*)self;
+    local_id dst = p->id;
     if(from == dst) return -1;
-    ssize_t read_result = read(p->io->fds[from][dst][READ_FD], msg, sizeof(Message));
+    ssize_t read_result = read(pipes[from][dst][READ_FD], msg, sizeof(Message));
     if (read_result < 0 && errno != EAGAIN) {
         perror("Receive ipc.c");
         return -1;

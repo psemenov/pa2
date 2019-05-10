@@ -4,17 +4,33 @@
 #include <unistd.h>
 
 
-#include "io.h"
-#include "main.h"
+#include "proc.h"
 
+TransferOrder init_transfer_order(local_id src, local_id dst,balance_t amount){
+    TransferOrder order = (TransferOrder) {
+        .s_src = src,
+        .s_dst = dst,
+        .s_amount = amount
+    };
+    return order;
+}
+
+void transfer(void * parent_data, local_id src, local_id dst,balance_t amount){
+    Message msg= init_msg(TRANSFER,sizeof(TransferOrder));
+    TransferOrder order = init_transfer_order(src, dst, amount);
+    memcpy(msg.s_payload, &order, sizeof(TransferOrder));
+    send(parent_data, src, &msg);
+    while (receive(parent_data, dst, &msg))
+        if (msg.s_header.s_type == ACK) break;
+}
 
 /** Syncronization cycle. */
-void synchronize(proc_t *proc, MessageType m_type, char *payload, size_t payload_len) {
+void synchronize(process *proc, MessageType m_type, char *payload, size_t payload_len) {
     Message tmp_msg = init_msg(m_type , payload_len);
     memcpy(tmp_msg.s_payload, payload, payload_len);
     send_multicast((void*)proc, (const Message *)&tmp_msg);
     for (size_t i = 1; i <= proc_number; i++) {
-       if (i != proc->self_id)
+       if (i != proc->id)
            while(receive((void*)proc, i, &tmp_msg) != 0);
     }
 }
@@ -40,53 +56,54 @@ void balance_set(BalanceHistory *balance_history, balance_t balance) {
 }
 
 /** Transfer cycle.  */
-void transfer_cycle(proc_t *proc, BalanceHistory *balance_history, TransferOrder *transfer_order) {
+void transfer_cycle(process *proc, BalanceHistory *balance_history, TransferOrder *order) {
     Message message;
-    if (proc->self_id == transfer_order->s_src) {
-        balance_set(balance_history, -transfer_order->s_amount);
+    if (proc->id == order->s_src) {
+        balance_set(balance_history, -order->s_amount);
         message = init_msg(TRANSFER,sizeof(TRANSFER));
-        memcpy(message.s_payload, transfer_order, sizeof(TransferOrder));
-        send((void *)proc, transfer_order->s_dst, &message);
+        memcpy(message.s_payload, order, sizeof(TransferOrder));
+        send((void *)proc, order->s_dst, &message);
 
         fprintf(event_log, log_transfer_out_fmt,
-                get_physical_time(), proc->self_id,
-                transfer_order->s_amount, transfer_order->s_dst);
+                get_physical_time(), proc->id,
+                order->s_amount, order->s_dst);
 
-    } else if (proc->self_id == transfer_order->s_dst) {
-        balance_set(balance_history, transfer_order->s_amount);
+    } else if (proc->id == order->s_dst) {
+        balance_set(balance_history, order->s_amount);
         fprintf(event_log, log_transfer_in_fmt,
-                get_physical_time(), proc->self_id,
-                transfer_order->s_amount, transfer_order->s_dst);
+                get_physical_time(), proc->id,
+                order->s_amount, order->s_dst);
         message = init_msg(ACK,0);
         send((void *)proc, PARENT_ID, &message);
     } else {
         fprintf(event_log, "PID %d received messsage for %d and %d.\n",
-                proc->self_id, transfer_order->s_src, transfer_order->s_dst);
+                proc->id, order->s_src, order->s_dst);
     }
     
 }
 
-void working_cycle(proc_t *proc, BalanceHistory *balance_history) {
+void working_cycle(process *proc, BalanceHistory *balance_history) {
     while (true) {
         Message tmp_msg = {{ 0 }};
         if (receive_any(proc, &tmp_msg) < 0) continue;
         if(tmp_msg.s_header.s_type == TRANSFER){
-            fprintf(pipe_log,"PID %d received TRANSFER message.\n",proc->self_id);
+            fprintf(pipe_log,"PID %d received TRANSFER message.\n",proc->id);
             transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
         }else if(tmp_msg.s_header.s_type == STOP){
-            fprintf(pipe_log,"PID %d received STOP message.\n",proc->self_id);
+            fprintf(pipe_log,"PID %d received STOP message.\n",proc->id);
             return;
         } else {
             fprintf(pipe_log,"PID %d received wrong message with m_type %d.\n",
-                proc->self_id, tmp_msg.s_header.s_type);
+                proc->id, tmp_msg.s_header.s_type);
             continue;
         }
     }
 }
 
-BalanceHistory init_balance_history(proc_t *proc){
+
+BalanceHistory init_balance_history(process *proc){
     BalanceHistory balance_history = {
-        .s_id = proc->self_id,
+        .s_id = proc->id,
         .s_history_len = 0,
         .s_history = {{ 0 }}
     };
@@ -94,10 +111,10 @@ BalanceHistory init_balance_history(proc_t *proc){
 }
 
 /** Child main function. */ 
-int process_c(proc_t *proc, balance_t balance) {
+int process_c(process *proc, balance_t balance) {
 
     char payload[MAX_PAYLOAD_LEN];
-    size_t len;
+    size_t payload_len;
     BalanceHistory balance_history = init_balance_history(proc);
 
     for (timestamp_t i = 0; i <= get_physical_time(); i++) {
@@ -109,32 +126,30 @@ int process_c(proc_t *proc, balance_t balance) {
     }
     balance_history.s_history_len = get_physical_time()+1;
 
-    close_fds(proc->io, proc->self_id);
+    close_fds(pipes, proc->id);
     /* Process starts. */
 
-    len = sprintf(payload, log_started_fmt, 
-                  get_physical_time(), proc->self_id, getpid(),
+    payload_len = sprintf(payload, log_started_fmt, 
+                  get_physical_time(), proc->id, getpid(),
                   getppid(), balance_history.s_history[0].s_balance);
-
     fputs(payload, event_log); 
 
-    /* Proces sync with others. */
-    synchronize(proc, STARTED, payload, len);
+    /* Synchronization */
+    synchronize(proc, STARTED, payload, payload_len);
     fprintf(event_log, log_received_all_started_fmt,
-            get_physical_time(), proc->self_id);
+            get_physical_time(), proc->id);
 
     /* Work. */
     working_cycle(proc, &balance_history);
 
     /* Process's done. */
-    len = sprintf(payload, log_done_fmt, get_physical_time(), 
-            proc->self_id, balance_history.s_history[balance_history.s_history_len-1].s_balance);
+    payload_len = sprintf(payload, log_done_fmt, get_physical_time(), 
+            proc->id, balance_history.s_history[balance_history.s_history_len-1].s_balance);
     fputs(payload, event_log); 
 
-    /* Process syncs wih ohers. */
-    synchronize(proc, DONE, payload, len);
-    fprintf(event_log, log_received_all_done_fmt, 
-            get_physical_time(), proc->self_id);
+    /* Synchronization */
+    synchronize(proc, DONE, payload, payload_len);
+    fprintf(event_log, log_received_all_done_fmt, get_physical_time(), proc->id);
 
     balance_copy(&balance_history, get_physical_time());
 
