@@ -13,14 +13,10 @@ int send(void *self, local_id dst, const Message *msg) {
     if (write(p->io->fds[src][dst][WRITE_FD], msg, sizeof(MessageHeader) + msg->s_header.s_payload_len) < 0) {
         perror("write");
         return -1;
-<<<<<<< HEAD
     }
-=======
 
     int    fd   = p->io->fds[src][dst][WRITE_FD];
     write(fd, msg, sizeof(MessageHeader) + msg->s_header.s_payload_len);
-//    fprintf(stderr, "ID %hhd send %d bytes to %d.\n", src, ret, dst);
->>>>>>> 83fa739dbfc4a592239a3efb47dca4f57ad98863
     return 0;
 }
 
