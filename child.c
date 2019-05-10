@@ -81,6 +81,26 @@ void working_cycle(proc_t *proc, BalanceHistory *balance_history) {
                 proc->self_id, tmp_msg.s_header.s_type);
             continue;
         }
+        //    switch (tmp_msg.s_header.s_type) {
+        //     case TRANSFER: {
+        //         fprintf(proc->io->pipes_log_stream,
+        //                 "ID %d got TRANSFER message\n",
+        //                 proc->self_id);
+        //         transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
+        //         break;
+        //     }
+        //     case STOP:
+        //         fprintf(proc->io->pipes_log_stream,
+        //                 "ID %d got STOP message.\n",
+        //                 proc->self_id);
+        //         return;
+        //     default: {
+        //         fprintf(proc->io->pipes_log_stream,
+        //                 "ID %d got wrong message with type %d.\n",
+        //                 proc->self_id, tmp_msg.s_header.s_type);
+        //         continue;
+        //     }
+        // }
     }
 }
 

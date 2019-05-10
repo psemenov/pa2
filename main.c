@@ -48,7 +48,8 @@ void receive_all_balance(proc_t *proc, AllHistory *all_history) {
     Message tmp_msg = {{ 0 }};
     local_id i = 1;
     while (i <= proc_number) {
-        while(receive((void*)proc, i, &tmp_msg) != 0);
+        while(receive((void*)proc, i, &tmp_msg) != 0)
+            ;
             if (tmp_msg.s_header.s_type == BALANCE_HISTORY) {
                 memcpy(&all_history->s_history[i-1], &tmp_msg.s_payload, tmp_msg.s_header.s_payload_len);
                 balance_t b  = all_history->s_history[i-1].s_history[all_history->s_history[i-1].s_history_len].s_balance;
