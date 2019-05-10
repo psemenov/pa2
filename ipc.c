@@ -31,7 +31,7 @@ int receive(void *self, local_id from, Message *msg) {
     proc_t* p   = (proc_t*)self;
     local_id dst = p->self_id;
     ssize_t read_result = read(p->io->fds[from][dst][READ_FD], msg, sizeof(Message));
-    if (errno != EAGAIN && read_result < 0) {
+    if (read_result < 0 && errno != EAGAIN) {
         perror("read");
         return -1;
     }
