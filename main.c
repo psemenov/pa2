@@ -69,8 +69,7 @@ wait_balance_from_all(proc_t *p, AllHistory *all_history) {
     all_history->s_history_len = proc_number;
 }
 
-int
-main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
 
     IO io = { 0 };
@@ -82,7 +81,6 @@ main(int argc, char *argv[]) {
         perror("can't read arguments");
         return -1;
     }
-    //proc.procnum = proc_number;
     io.events_log_stream = fopen(events_log, "w+");
     io.pipes_log_stream  = fopen(pipes_log, "w");
 
