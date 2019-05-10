@@ -1,10 +1,18 @@
+<<<<<<< HEAD
 0: process 1 (pid  9251, parent  9250) has STARTED with balance $10
+=======
+0: process 1 (pid 24223, parent 24222) has STARTED with balance $10
+>>>>>>> 83fa739dbfc4a592239a3efb47dca4f57ad98863
 0: process 1 received all STARTED messages
 1: process 1 transferred $ 1 to process 2
 2: process 1 received $ 1 from process 1
 2: process 1 has DONE with balance $10
 2: process 1 received all DONE messages
+<<<<<<< HEAD
 0: process 2 (pid  9252, parent  9250) has STARTED with balance $20
+=======
+0: process 2 (pid 24224, parent 24222) has STARTED with balance $20
+>>>>>>> 83fa739dbfc4a592239a3efb47dca4f57ad98863
 0: process 2 received all STARTED messages
 1: process 2 received $ 1 from process 2
 2: process 2 transferred $ 1 to process 1

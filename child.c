@@ -3,12 +3,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "common.h"
-#include "ipc.h"
+
 #include "io.h"
-#include "pa2345.h"
-#include "child.h"
-#include "banking.h"
+#include "main.h"
+
 
 #define BALANCE_HIST_SIZE(hist) \
  (sizeof(BalanceHistory) - (sizeof(hist->s_history) - hist->s_history_len))
@@ -18,15 +16,8 @@
  */
 static void
 sync_state(proc_t *p, MessageType type, char *payload, size_t payload_len) {
-    Message msg;
-    msg.s_header = (MessageHeader) {
-            .s_magic       = MESSAGE_MAGIC,
-            .s_payload_len = payload_len,
-            .s_type        = type,
-            .s_local_time  = 0
-    };
+    Message msg = init_msg(type , payload_len);
     memcpy(msg.s_payload, payload, payload_len);
-
     send_multicast((void*)p, (const Message *)&msg);
 
     for (size_t i = 1; i <= proc_number; i++) {
@@ -62,37 +53,6 @@ set_balance(BalanceHistory *history, balance_t balance) {
     history->s_history_len = t+1;
 }
 
-/** Add to the history new records about balance changing.
- * 
- * @param sign_balance  If the value is positive balance increases
- *                      and decreases otherwise.
- */
-static void
-send_transfer(proc_t *p, TransferOrder *order) {
-    Message msg;
-    msg.s_header = (MessageHeader) {
-        .s_magic       = MESSAGE_MAGIC,
-        .s_payload_len = sizeof(TransferOrder),
-        .s_type        = TRANSFER,
-        .s_local_time  = get_physical_time()
-    };
-    memcpy(msg.s_payload, order, sizeof(TransferOrder));
-
-    send((void *)p, order->s_dst, &msg);
-}
-
-static void
-send_ack(proc_t *p) {
-    Message msg;
-    msg.s_header = (MessageHeader) {
-        .s_magic       = MESSAGE_MAGIC,
-        .s_payload_len = 0,
-        .s_type        = ACK,
-        .s_local_time  = get_physical_time()
-    };
-    send((void *)p, PARENT_ID, &msg);
-}
-
 /** Transfer cycle.
  * 
  * @algo
@@ -105,10 +65,13 @@ send_ack(proc_t *p) {
  */
 static void
 transfer_handle(proc_t *p, BalanceHistory *history, TransferOrder *order) {
-
+    Message msg;
     if (p->self_id == order->s_src) {
         set_balance(history, -order->s_amount);
-        send_transfer(p, order);
+        msg = init_msg(TRANSFER,sizeof(TRANSFER));
+        memcpy(msg.s_payload, order, sizeof(TransferOrder));
+        send((void *)p, order->s_dst, &msg);
+
         fprintf(p->io->events_log_stream, log_transfer_out_fmt,
                 get_physical_time(), p->self_id,
                 order->s_amount, order->s_dst);
@@ -118,7 +81,8 @@ transfer_handle(proc_t *p, BalanceHistory *history, TransferOrder *order) {
         fprintf(p->io->events_log_stream, log_transfer_in_fmt,
                 get_physical_time(), p->self_id,
                 order->s_amount, order->s_dst);
-        send_ack(p);
+        msg = init_msg(ACK,0);
+        send((void *)p, PARENT_ID, &msg);
     } else {
         fprintf(p->io->events_log_stream, "ID %d got mesasge for %d and %d.\n",
                 p->self_id, order->s_src, order->s_dst);
