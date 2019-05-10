@@ -7,15 +7,11 @@
 #include "banking.h"
 
 typedef struct {
-    const IO *io;       /**< Contrainter with I/O metadata. */
+    IO *io;       /**< Contrainter with I/O metadata. */
     local_id self_id;   /**< ID for the process. */
 } proc_t;
 
-/** Child main function.
- * 
- * @param p         Child process desciption.
- * @param history   Balance history of the process.
- */ 
+
 int process_c(proc_t *p, balance_t balance);
 void synchronize(proc_t *proc, MessageType m_type, char *payload, size_t payload_len);
 void balance_copy(BalanceHistory *balance_history, uint8_t time);

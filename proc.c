@@ -48,19 +48,19 @@ void transfer_cycle(proc_t *proc, BalanceHistory *balance_history, TransferOrder
         memcpy(message.s_payload, transfer_order, sizeof(TransferOrder));
         send((void *)proc, transfer_order->s_dst, &message);
 
-        fprintf(proc->io->events_log_stream, log_transfer_out_fmt,
+        fprintf(event_log, log_transfer_out_fmt,
                 get_physical_time(), proc->self_id,
                 transfer_order->s_amount, transfer_order->s_dst);
 
     } else if (proc->self_id == transfer_order->s_dst) {
         balance_set(balance_history, transfer_order->s_amount);
-        fprintf(proc->io->events_log_stream, log_transfer_in_fmt,
+        fprintf(event_log, log_transfer_in_fmt,
                 get_physical_time(), proc->self_id,
                 transfer_order->s_amount, transfer_order->s_dst);
         message = init_msg(ACK,0);
         send((void *)proc, PARENT_ID, &message);
     } else {
-        fprintf(proc->io->events_log_stream, "PID %d received messsage for %d and %d.\n",
+        fprintf(event_log, "PID %d received messsage for %d and %d.\n",
                 proc->self_id, transfer_order->s_src, transfer_order->s_dst);
     }
     
@@ -71,36 +71,16 @@ void working_cycle(proc_t *proc, BalanceHistory *balance_history) {
         Message tmp_msg = {{ 0 }};
         if (receive_any(proc, &tmp_msg) < 0) continue;
         if(tmp_msg.s_header.s_type == TRANSFER){
-            fprintf(proc->io->pipes_log_stream,"PID %d received TRANSFER message.\n",proc->self_id);
+            fprintf(pipe_log,"PID %d received TRANSFER message.\n",proc->self_id);
             transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
         }else if(tmp_msg.s_header.s_type == STOP){
-            fprintf(proc->io->pipes_log_stream,"PID %d received STOP message.\n",proc->self_id);
+            fprintf(pipe_log,"PID %d received STOP message.\n",proc->self_id);
             return;
         } else {
-            fprintf(proc->io->pipes_log_stream,"PID %d received wrong message with m_type %d.\n",
+            fprintf(pipe_log,"PID %d received wrong message with m_type %d.\n",
                 proc->self_id, tmp_msg.s_header.s_type);
             continue;
         }
-        //    switch (tmp_msg.s_header.s_type) {
-        //     case TRANSFER: {
-        //         fprintf(proc->io->pipes_log_stream,
-        //                 "ID %d got TRANSFER message\n",
-        //                 proc->self_id);
-        //         transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
-        //         break;
-        //     }
-        //     case STOP:
-        //         fprintf(proc->io->pipes_log_stream,
-        //                 "ID %d got STOP message.\n",
-        //                 proc->self_id);
-        //         return;
-        //     default: {
-        //         fprintf(proc->io->pipes_log_stream,
-        //                 "ID %d got wrong message with type %d.\n",
-        //                 proc->self_id, tmp_msg.s_header.s_type);
-        //         continue;
-        //     }
-        // }
     }
 }
 
@@ -118,7 +98,6 @@ int process_c(proc_t *proc, balance_t balance) {
 
     char payload[MAX_PAYLOAD_LEN];
     size_t len;
-    const IO *io = proc->io;
     BalanceHistory balance_history = init_balance_history(proc);
 
     for (timestamp_t i = 0; i <= get_physical_time(); i++) {
@@ -130,18 +109,18 @@ int process_c(proc_t *proc, balance_t balance) {
     }
     balance_history.s_history_len = get_physical_time()+1;
 
-    close_fds(proc->io, proc->self_id, proc_number);
+    close_fds(proc->io, proc->self_id);
     /* Process starts. */
 
     len = sprintf(payload, log_started_fmt, 
                   get_physical_time(), proc->self_id, getpid(),
                   getppid(), balance_history.s_history[0].s_balance);
 
-    fputs(payload, io->events_log_stream); 
+    fputs(payload, event_log); 
 
     /* Proces sync with others. */
     synchronize(proc, STARTED, payload, len);
-    fprintf(io->events_log_stream, log_received_all_started_fmt,
+    fprintf(event_log, log_received_all_started_fmt,
             get_physical_time(), proc->self_id);
 
     /* Work. */
@@ -150,11 +129,11 @@ int process_c(proc_t *proc, balance_t balance) {
     /* Process's done. */
     len = sprintf(payload, log_done_fmt, get_physical_time(), 
             proc->self_id, balance_history.s_history[balance_history.s_history_len-1].s_balance);
-    fputs(payload, io->events_log_stream); 
+    fputs(payload, event_log); 
 
     /* Process syncs wih ohers. */
     synchronize(proc, DONE, payload, len);
-    fprintf(io->events_log_stream, log_received_all_done_fmt, 
+    fprintf(event_log, log_received_all_done_fmt, 
             get_physical_time(), proc->self_id);
 
     balance_copy(&balance_history, get_physical_time());

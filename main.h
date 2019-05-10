@@ -1,7 +1,7 @@
 #include "common.h"
 #include "ipc.h"
 #include "pa2345.h"
-#include "child.h"
+#include "proc.h"
 #include "banking.h"
 
 #define ARGUMENTS_OFFSET 3
