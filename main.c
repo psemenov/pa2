@@ -114,7 +114,7 @@ main(int argc, char *argv[]) {
         perror("can't read arguments");
         return -1;
     }
-    proc.procnum = proc_number;
+    //proc.procnum = proc_number;
     io.events_log_stream = fopen(events_log, "w+");
     io.pipes_log_stream  = fopen(pipes_log, "w");
 

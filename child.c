@@ -29,7 +29,7 @@ sync_state(proc_t *p, MessageType type, char *payload, size_t payload_len) {
 
     send_multicast((void*)p, (const Message *)&msg);
 
-    for (size_t i = 1; i <= p->procnum; i++) {
+    for (size_t i = 1; i <= proc_number; i++) {
        if (i != p->self_id)
            while(receive((void*)p, i, &msg) != 0);
     }
@@ -181,7 +181,7 @@ child(proc_t *p, balance_t balance) {
     }
     history.s_history_len = t+1;
 
-    close_unsed_fds(p->io, p->self_id, p->procnum);
+    close_unsed_fds(p->io, p->self_id, proc_number);
     /* Process starts. */
 
     len = sprintf(payload, log_started_fmt, 
