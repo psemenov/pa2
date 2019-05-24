@@ -16,22 +16,29 @@ TransferOrder init_transfer_order(local_id src, local_id dst,balance_t amount){
 }
 
 void transfer(void * parent_data, local_id src, local_id dst,balance_t amount){
-    Message msg= init_msg(TRANSFER,sizeof(TransferOrder));
+    inc_time();
+    Message tmp_msg= init_msg(TRANSFER,sizeof(TransferOrder));
     TransferOrder order = init_transfer_order(src, dst, amount);
-    memcpy(msg.s_payload, &order, sizeof(TransferOrder));
-    send(parent_data, src, &msg);
-    while (receive(parent_data, dst, &msg))
-        if (msg.s_header.s_type == ACK) break;
+    memcpy(tmp_msg.s_payload, &order, sizeof(TransferOrder));
+    send(parent_data, src, &tmp_msg);
+    while (receive(parent_data, dst, &tmp_msg))
+        if (tmp_msg.s_header.s_type == ACK) break;
+    set_lamport_time(tmp_msg.s_header.s_local_time);
+    inc_time();
 }
 
 /** Syncronization cycle. */
 void synchronize(process *proc, MessageType m_type, char *payload, size_t payload_len) {
+    inc_time();
     Message tmp_msg = init_msg(m_type , payload_len);
     memcpy(tmp_msg.s_payload, payload, payload_len);
     send_multicast((void*)proc, (const Message *)&tmp_msg);
     for (size_t i = 1; i <= proc_number; i++) {
-       if (i != proc->id)
+       if (i != proc->id) {
            while(receive((void*)proc, i, &tmp_msg) != 0);
+           set_lamport_time(tmp_msg.s_header.s_local_time);
+           inc_time();
+       }
     }
 }
 
@@ -46,17 +53,21 @@ void balance_copy(BalanceHistory *balance_history, uint8_t time) {
 }
 
 void balance_set(BalanceHistory *balance_history, balance_t balance) {
-    balance_copy(balance_history, (uint8_t)get_physical_time());
-    balance_history->s_history[get_physical_time()] = (BalanceState) {
+    balance_t pending_balance = balance_history->s_history[balance_history->s_history_len-1].s_balance_pending_in;
+    balance_copy(balance_history, (uint8_t)get_lamport_time());
+    balance_history->s_history[get_lamport_time()] = (BalanceState) {
             .s_balance = balance_history->s_history[balance_history->s_history_len-1].s_balance + balance,
-            .s_time = get_physical_time(),
-            .s_balance_pending_in = 0
+            .s_time = get_lamport_time(),
+            .s_balance_pending_in = pending_balance - balance
     };
-    balance_history->s_history_len = get_physical_time()+1;
+    balance_history->s_history_len = get_lamport_time()+1;
 }
+
+
 
 /** Transfer cycle.  */
 void transfer_cycle(process *proc, BalanceHistory *balance_history, TransferOrder *order) {
+    inc_time();
     Message message;
     if (proc->id == order->s_src) {
         balance_set(balance_history, -order->s_amount);
@@ -65,13 +76,13 @@ void transfer_cycle(process *proc, BalanceHistory *balance_history, TransferOrde
         send((void *)proc, order->s_dst, &message);
 
         fprintf(event_log, log_transfer_out_fmt,
-                get_physical_time(), proc->id,
+                get_lamport_time(), proc->id,
                 order->s_amount, order->s_dst);
 
     } else if (proc->id == order->s_dst) {
         balance_set(balance_history, order->s_amount);
         fprintf(event_log, log_transfer_in_fmt,
-                get_physical_time(), proc->id,
+                get_lamport_time(), proc->id,
                 order->s_amount, order->s_dst);
         message = init_msg(ACK,0);
         send((void *)proc, PARENT_ID, &message);
@@ -86,6 +97,9 @@ void working_cycle(process *proc, BalanceHistory *balance_history) {
     while (true) {
         Message tmp_msg = {{ 0 }};
         if (receive_any(proc, &tmp_msg) < 0) continue;
+        set_lamport_time(tmp_msg.s_header.s_local_time);
+        inc_time();
+
         if(tmp_msg.s_header.s_type == TRANSFER){
             fprintf(pipe_log,"PID %d received TRANSFER message.\n",proc->id);
             transfer_cycle(proc, balance_history, (TransferOrder*)(tmp_msg.s_payload));
@@ -99,7 +113,6 @@ void working_cycle(process *proc, BalanceHistory *balance_history) {
         }
     }
 }
-
 
 BalanceHistory init_balance_history(process *proc){
     BalanceHistory balance_history = {
@@ -117,42 +130,47 @@ int process_c(process *proc, balance_t balance) {
     size_t payload_len;
     BalanceHistory balance_history = init_balance_history(proc);
 
-    for (timestamp_t i = 0; i <= get_physical_time(); i++) {
+    for (timestamp_t i = 0; i <= get_lamport_time(); i++) {
         balance_history.s_history[i] = (BalanceState) {
             .s_balance = balance,
             .s_time = i,
             .s_balance_pending_in = 0
         };
     }
-    balance_history.s_history_len = get_physical_time()+1;
+    balance_history.s_history_len = get_lamport_time()+1;
 
     close_fds(pipes, proc->id);
     /* Process starts. */
 
     payload_len = sprintf(payload, log_started_fmt, 
-                  get_physical_time(), proc->id, getpid(),
+                  get_lamport_time(), proc->id, getpid(),
                   getppid(), balance_history.s_history[0].s_balance);
     fputs(payload, event_log); 
 
     /* Synchronization */
     synchronize(proc, STARTED, payload, payload_len);
     fprintf(event_log, log_received_all_started_fmt,
-            get_physical_time(), proc->id);
+            get_lamport_time(), proc->id);
 
     /* Work. */
     working_cycle(proc, &balance_history);
 
     /* Process's done. */
-    payload_len = sprintf(payload, log_done_fmt, get_physical_time(), 
+    payload_len = sprintf(payload, log_done_fmt, get_lamport_time(), 
             proc->id, balance_history.s_history[balance_history.s_history_len-1].s_balance);
     fputs(payload, event_log); 
 
     /* Synchronization */
     synchronize(proc, DONE, payload, payload_len);
-    fprintf(event_log, log_received_all_done_fmt, get_physical_time(), proc->id);
+    fprintf(event_log, log_received_all_done_fmt, get_lamport_time(), proc->id);
 
-    balance_copy(&balance_history, get_physical_time());
+    balance_copy(&balance_history, get_lamport_time());
 
-    synchronize(proc, BALANCE_HISTORY, (char*)&balance_history, sizeof(balance_history));
+    Message tmp_msg;
+    payload_len = sizeof(balance_history.s_history[0]) * balance_history.s_history_len;
+    inc_time();
+    tmp_msg = init_msg(BALANCE_HISTORY, payload_len);
+    memcpy(tmp_msg.s_payload, (char*)&balance_history, payload_len);
+    send((void*)proc, PARENT_ID, &tmp_msg);
     return 0;
 }

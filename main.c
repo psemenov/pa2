@@ -24,6 +24,19 @@ int get_arguments(int argc, char **argv) {
     return 0;
 }
 
+
+timestamp_t get_lamport_time() {
+    return lamport_time;
+}
+
+void set_lamport_time(timestamp_t time) {
+    if (time > lamport_time) lamport_time = time;
+}
+
+void inc_time() {
+    lamport_time++;
+}
+
 int init_pipes(int pipes[ARR_SIZE][ARR_SIZE][FD_MAX]) {
     int count = 1;
     for (int i = 0; i <= proc_number; i++) {
@@ -73,7 +86,7 @@ Message init_msg(MessageType type , size_t payload_len){
     msg.s_header.s_magic = MESSAGE_MAGIC;
     msg.s_header.s_type = type;
     msg.s_header.s_payload_len = payload_len;
-    msg.s_header.s_local_time = get_physical_time();
+    msg.s_header.s_local_time = get_lamport_time();
     return msg;
 }
 
@@ -81,6 +94,8 @@ void receive_all_msg(process *proc, MessageType m_type) {
     Message tmp_msg = { {0} };
     for (local_id i = 1; i <= proc_number; i++) {
         while(receive((void*)proc, i, &tmp_msg) != 0);
+        set_lamport_time(tmp_msg.s_header.s_local_time);
+        inc_time();
         if (tmp_msg.s_header.s_type != m_type) {
             fprintf(pipe_log, 
                     "Wrong message received: expected %d,instead got %d.\n",
@@ -96,10 +111,13 @@ void receive_all_balance(process *proc, AllHistory *all_history) {
     while (i <= proc_number) {
         while(receive((void*)proc, i, &tmp_msg) != 0)
             ;
+            set_lamport_time(tmp_msg.s_header.s_local_time);
+            inc_time();
+
             if (tmp_msg.s_header.s_type == BALANCE_HISTORY) {
                 memcpy(&all_history->s_history[i-1], &tmp_msg.s_payload, tmp_msg.s_header.s_payload_len);
                 balance_t b  = all_history->s_history[i-1].s_history[all_history->s_history[i-1].s_history_len].s_balance;
-                fprintf(event_log, log_done_fmt, get_physical_time(),proc->id, b);
+                fprintf(event_log, log_done_fmt, get_lamport_time(),proc->id, b);
                 i++;
             }
     }
@@ -139,16 +157,17 @@ int main(int argc, char *argv[]) {
 
     receive_all_msg(&proc, STARTED);
     fprintf(event_log, log_received_all_started_fmt, 
-            get_physical_time(), PARENT_ID);
+            get_lamport_time(), PARENT_ID);
 
     bank_robbery(&proc, proc_number);
 
+    inc_time();
     Message msg = init_msg(STOP,0);
     send_multicast(&proc,&msg);
 
     receive_all_msg(&proc, DONE);
     fprintf(event_log,log_received_all_done_fmt,
-            get_physical_time(), PARENT_ID);
+            get_lamport_time(), PARENT_ID);
     receive_all_balance(&proc, &all_history);
     print_history(&all_history);
 

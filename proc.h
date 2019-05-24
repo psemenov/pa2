@@ -13,7 +13,7 @@
 
 int proc_number;
 balance_t balances[MAX_PROCESS_ID];
-
+timestamp_t lamport_time;
 
 FILE *event_log;
 FILE *pipe_log;
@@ -37,3 +37,8 @@ void balance_copy(BalanceHistory *balance_history, uint8_t time);
 void balance_set(BalanceHistory *balance_history, balance_t balance);
 void transfer_cycle(process *proc, BalanceHistory *balance_history, TransferOrder *transfer_order);
 void working_cycle(process *proc, BalanceHistory *balance_history);
+
+/* lamport */
+timestamp_t get_lamport_time();
+void set_lamport_time(timestamp_t time);
+void inc_time();
